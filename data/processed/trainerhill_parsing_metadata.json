@@ -1,0 +1,45 @@
+{
+  "source": "Trainer Hill",
+  "input": "data/raw/trainerhill_dynamic_data.jsonl",
+  "parsed_at": "2026-10-10T16:20:42.786980+00:00",
+  "records_written": {
+    "trainerhill_matchups.jsonl": 778,
+    "trainerhill_decks.jsonl": 7,
+    "trainerhill_cards.jsonl": 7,
+    "trainerhill_meta.jsonl": 7,
+    "trainerhill_table_rows.jsonl": 0,
+    "trainerhill_export_rows.jsonl": 204,
+    "trainerhill_components.jsonl": 11269
+  },
+  "date_ranges_seen": [
+    [
+      "2020-01-01",
+      "2020-12-31"
+    ],
+    [
+      "2021-01-01",
+      "2021-12-31"
+    ],
+    [
+      "2022-01-01",
+      "2022-12-31"
+    ],
+    [
+      "2023-01-01",
+      "2023-12-31"
+    ],
+    [
+      "2024-01-01",
+      "2024-12-31"
+    ],
+    [
+      "2025-01-01",
+      "2025-12-31"
+    ],
+    [
+      "2026-01-01",
+      "2026-10-10"
+    ]
+  ],
+  "empty_matchup_capture": false
+}

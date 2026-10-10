@@ -1,0 +1,32 @@
+{
+  "source": "PokémonMeta",
+  "input": "data/raw/pokemonmeta_dynamic_data.jsonl",
+  "parsed_at": "2026-10-10T15:36:04.579607+00:00",
+  "records_written": {
+    "pokemonmeta_articles.jsonl": 1056,
+    "pokemonmeta_top_decks.jsonl": 52677,
+    "pokemonmeta_cards.jsonl": 3570,
+    "pokemonmeta_winrates.jsonl": 3101,
+    "pokemonmeta_sets.jsonl": 61,
+    "pokemonmeta_deck_types.jsonl": 410,
+    "pokemonmeta_engines.jsonl": 57,
+    "pokemonmeta_ranked_types.jsonl": 2,
+    "pokemonmeta_nav_tabs.jsonl": 5,
+    "pokemonmeta_users.jsonl": 100,
+    "pokemonmeta_other_api.jsonl": 0
+  },
+  "note": "Each entity is normalized to one JSONL record and deduplicated by stable ID or content fingerprint. The raw capture remains unchanged.",
+  "response_item_counts": {
+    "articles": 1056,
+    "top_decks": 52677,
+    "cards": 3570,
+    "winrates": 3101,
+    "sets": 61,
+    "deck_types": 410,
+    "engines": 57,
+    "ranked_types": 2,
+    "nav_tabs": 5,
+    "users": 100
+  },
+  "deduplication": "stable _id/id/slug/url, otherwise SHA-256 content fingerprint"
+}

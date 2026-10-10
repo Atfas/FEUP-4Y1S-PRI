@@ -1,0 +1,104 @@
+Project Rules, PRI M.EIC 2026/27
+
+Information Processing and Retrieval (PRI)
+Master in Informatics Engineering and Computation (M.EIC)
+FEUP, U.Porto
+
+
+I. Introduction
+The course project runs for the whole semester and has three milestones, each with a report and a presentation as deliverables. The end result of the project is an information search system, including work on data collection and preparation, information querying and retrieval, and retrieval evaluation.
+
+The project is developed in groups of 4 students and starts with the selection of a topic and the relevant data sources. By the end of the second practical class, groups and topics have to be established.
+
+Topics are free but cannot be repeated in the same class. Selected datasets must be mostly of an unstructured nature and rich in textual data (i.e. long text fields, not simply textual labels). The resulting document collection must be suitable for text-based ad hoc retrieval, supporting meaningful information needs expressed as queries.
+
+
+II. Deliveries and oral presentations
+For each milestone there will be a corresponding delivery, presentation and discussion. In the weeks assigned to project presentations, the practical class will be organized in a workshop format, with project presentations and discussions according to an established schedule.
+
+The grade for each project considers the reports, presentations and discussions at each milestone. The grade for each student has an individual component, that is positive if the student contributes to the workshop with questions or comments, and negative if the student is not present or shows unprofessional behavior.
+
+The final project evaluation corresponds to a weighted average of the three milestones. The final classification of the project may vary from element to element of the same group, in more or less 3 grade points, based on the opinion of the professors and on the self- and hetero-assessment to be carried out internally in each group.
+
+All group members are required to participate and contribute to all phases of the project, namely in the selection of the data sources; in the selection of technologies; in identifying and characterizing the problem; in designing, implementing and evaluating the solution; in writing the reports; and in presenting and discussing the work.
+
+Reports are written as short scientific papers, using a two-column format (4 pages maximum in each delivery; a final report with up to 12 pages is expected). The deadline for each submission is posted in the course plan. Each report is a self-contained work-in-progress and is based on the previous deliveries, i.e. each delivery corresponds to a new part and extends on the previous delivery. Students must use the standard two-column template from ACM (Word and LaTeX templates available at ACM and also on Overleaf). Use the ‘sigconf’ document class. Here is an example of the expected result — sample-sigconf.pdf.
+
+Electronic submissions of the project deliverables are accepted up to 18:00 on the day before the presentation day. Moodle is used for submissions, which include:
+
+PDF version of presentation slides (demo-gg.pdf);
+PDF version of the report (report-gg.pdf);
+Code, depending on the milestone (code-gg.zip)
+
+III. Project Milestones
+The project runs for the whole semester, starting with the group setup and ending with the final presentation. The project is evaluated at three milestones, namely: data preparation, information retrieval, and final search system. The expected results depend to some extent on the selected topic, but some details are provided below.
+
+
+Milestone #1: Data Preparation
+The first milestone is achieved with the preparation and characterization of the datasets selected for the project. The datasets are the foundation for the project and the goal of the first task is to prepare and explore them. This task is heavily dependent on the datasets, which may require some extraction actions such as crawling or scraping.
+
+Work on these tasks depends on the nature, volume, organization and accessibility of the selected datasets. As a result of this milestone, the expected outcome is a well-documented and reproducible pipeline for data processing, resulting in a collection of documents that will serve as the foundation for the subsequent milestones.
+
+Project topics are free but cannot be repeated in the same class and need to be approved. Selected data sources must include both structured data and unstructured textual data (i.e. long textual fields). If using already prepared datasets, the group is required to use and combine (i.e., link) a minimum of two datasets from distinct sources.
+
+The following list identifies the actions which are required in M1:
+
+search repositories for datasets;
+select convenient data subsets;
+assess the authority of the data source and data quality;
+perform exploratory data analysis;
+prepare and document a data processing pipeline;
+characterize the datasets, identifying and describing some of their properties (e.g., number of documents, documents characteristics, term metrics);
+identify the conceptual model for the data domain;
+define and characterize the documents in the final collection;
+identify and characterize follow-up information needs for the project.
+Explore a list of suggested data sources as a starting point – Data Sources, PRI.
+
+
+Milestone #2: Information Retrieval
+The second milestone is achieved with the implementation and use of Solr on the project datasets and its exploration with free-text queries.
+
+This task makes use of a state-of-the-art retrieval platform and involves viewing the datasets as collections of documents, identifying a document model for indexing, and designing queries to be executed on the indexed information.
+
+Also included in this milestone is a brief description of the ideas to explore in the development of the final search system, i.e., Milestone #3.
+
+The following list identifies the actions required in M2:
+
+use Solr as the information retrieval tool;
+analyze the documents and identify their indexable components;
+build the indexes with Solr;
+configure and execute queries with Solr;
+demonstrate the indexing and retrieval processes;
+implement and evaluate two distinct retrieval setups;
+manually evaluate the returned results;
+evaluate the results obtained for the defined information needs.
+
+Milestone #3: Search System
+The third milestone is achieved with the development of the final version of the search system. This version is an improvement over the previous milestone, making use of features and techniques with the goal of improving the quality of the search results.
+
+For this milestone, each group is expected to implement and evaluate a semantic retrieval approach, comparing it with the retrieval approaches developed in the previous milestone.
+
+Additionally, each group member is expected to explore and evaluate an additional approach to improve retrieval. These individual explorations should address different experimental questions and be motivated by the characteristics of the document collection, the identified information needs, or limitations observed in previous results. The explored approaches are experimental and do not necessarily need to be combined or incorporated into a new retrieval configuration.
+
+An extended evaluation of the results and a comparison between the explored approaches and the previous version of the search system are also expected. The group should analyze the obtained results, taking into account the order of the results list, scoring methods, and the trade-off across all information needs. This individual assessment should be used to motivate the design of the final search system, which can incorporate various improvements.
+
+The following list identifies the actions which are expected for the final search system:
+
+iterate over the retrieval approach developed in Milestone #2;
+implement and evaluate a semantic retrieval approach;
+explore and evaluate additional retrieval approaches, with an individual contribution from each group member;
+define an evaluation methodology for the selected information needs;
+evaluate the quality of the retrieved results;
+compare different retrieval approaches and configurations;
+analyze and discuss the obtained results;
+optionally, develop a search interface that demonstrates the main features of the system.
+As examples of ideas to explore, groups may:
+
+incorporate new information retrieval algorithms;
+improve query formulation with techniques such as query rewriting and relevance feedback;
+combine lexical and semantic retrieval approaches;
+expand the information available for each document by adding and linking new datasets;
+explore different document and query representations or embedding models;
+explore different retrieval architectures, such as dual-encoders and cross-encoders;
+explore reranking approaches;
+and much more…

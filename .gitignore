@@ -1,0 +1,13 @@
+.env
+.env.*
+!.env.example
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+
+# Generated extraction data that exceeds GitHub's file-size limit.
+data/raw/pokemonmeta_dynamic_data.jsonl
+data/processed/pokemonmeta_articles.jsonl
+data/processed/pokemonmeta_top_decks.jsonl
+data/processed/pokemonmeta_winrates.jsonl
