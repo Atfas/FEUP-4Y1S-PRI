@@ -5,12 +5,8 @@ The API quota is tracked per key. Three keys can therefore be used safely in
 round-robin order, while every request and response remains reproducible in
 the raw JSONL output without writing credentials to disk.
 
-The TCGAPI_KEY_*index* has to be exported as env. variable
-export TCGAPI_KEY_1="tcg_live_9fb34fb743046412d3d6f00b7f548e1d8e8dd134"
-export TCGAPI_KEY_2="tcg_live_8a5dde965304745f408c681749315f6098f9c16d"
-export TCGAPI_KEY_3="tcg_live_9518afba9b4f28c97232c5953f81e8365becdbef"
-
-remember, only 100 requests per day
+The TCGAPI_KEY_*index* variables have to be exported in the environment.
+The provider's current request quota should be checked before a full run.
 """
 
 from __future__ import annotations
