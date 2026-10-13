@@ -1,7 +1,6 @@
 """Characterize the final card collection (search/*.json).
 
-Writes eda/stats.json (all numbers quoted in the report) and report/figures/*.pdf.
-Run from the PRI root:  .venv/bin/python eda/characterize.py
+Writes eda/stats.json (all numbers quoted in the report) and report/figures/*.pdf
 """
 import collections
 import json
