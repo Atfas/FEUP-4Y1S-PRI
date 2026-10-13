@@ -1,83 +1,72 @@
-# Bulbapedia
+# Pokémon TCG Search — PRI 2026/27, Milestone 1 (Data Preparation)
 
-This project builds a structured Pokémon TCG dataset from Bulbapedia pages by fetching wikitext, turning it into JSON records, enriching entity data for artists and Pokémon, and combining that with market-price data from TCGplayer before running a quality pipeline over the final output.
+Course project for **Information Processing and Retrieval (PRI)**, M.EIC, FEUP.
+This branch holds everything needed for the Milestone 1 delivery: the data pipeline,
+the resulting document collection, the characterization code, the diagrams and the report.
 
-## Data sources
+The collection combines two sources:
 
-- Bulbapedia provides the main card, expansion, artist, and Pokémon records extracted from wikitext pages.
-- TCGplayer adds market-price data that enriches the final card dataset with pricing context.
+- **Bulbapedia** ([MediaWiki API](https://bulbapedia.bulbagarden.net/w/api.php), CC BY-NC-SA 2.5):
+  card, Pokémon species, illustrator and expansion pages.
+- **TCGCSV** ([tcgcsv.com](https://tcgcsv.com)): daily mirror of TCGplayer market prices.
 
-## Requirements
+Result: 13,972 cards (18,420 prints, 20,327 attacks) linked to 1,027 species, 427 illustrators
+and 221 expansions; 94% of cards have a market price (snapshot 2026-10-11).
 
-- Python 3.14+
-- `uv` (recommended for dependency and script management)
+## Repository structure
 
-Install dependencies:
+```text
+.
+├── main.py                 # runs the whole pipeline in order
+├── fetching/               # download wikitext (Bulbapedia) and price CSVs (TCGCSV)
+├── extracting/             # wikitext -> JSON (cards, entities, expansions)
+├── processing/             # ids, entity linking, price matching, exploratory analysis
+├── quality_check.py        # completeness / link checks
+├── eda/characterize.py     # statistics + figures for the report -> eda/stats.json, report/figures/
+├── search/                 # FINAL COLLECTION: cards, pokemon, artists, expansions + link/price reports
+├── diagrams/PRI.drawio     # pipeline diagram and conceptual model (open with diagrams.net)
+├── report/                 # ACM sigconf LaTeX report (main.tex, references.bib, figures/)
+├── Makefile
+└── pyproject.toml, uv.lock # pinned dependencies (Python 3.14, uv)
+```
 
-```powershell
+## How to reproduce
+
+Requires Python 3.14 and [uv](https://docs.astral.sh/uv/).
+
+```bash
 uv sync
+make pipeline   # uv run main.py   -> data/ (cache) and search/*.json
+make eda        # uv run eda/characterize.py -> eda/stats.json, report/figures/*.pdf
+make report     # needs LaTeX + acmart; otherwise upload report/ to Overleaf
 ```
 
-## Run the full pipeline
+Fetching is resumable: raw pages and CSVs are cached in `data/` (git-ignored) and skipped on re-runs.
+Bulbapedia requests are batched (≤50 titles), delayed 2 s and respect `maxlag`.
 
-From the repository root:
+## Pipeline
 
-```powershell
-uv run main.py
-```
+1. **Fetch** expansion list → expansion pages → card wikitext; then the Pokémon and artist pages the
+   cards reference; then TCGCSV groups and `ProductsAndPrices.csv` per group.
+2. **Extract** with `mwparserfromhell`: infobox fields, attacks/abilities (cost, damage, effect),
+   Pokédex entries, gallery, release information, trivia, categories (Japanese-only data dropped).
+3. **Process**: stable slug ids (`card:abra-151-63`), card ↔ species/artist/expansion links with stub
+   records for names without a page, prints with expansion/illustrator/image, flattened `rules_text`.
+4. **Merge prices**: products matched by card name + number, TCGCSV groups mapped to expansions by
+   vote; ambiguous products are reported, never guessed.
 
-`main.py` runs the complete data workflow in order:
+See `diagrams/PRI.drawio` for the diagram and `search/links_report.json` / `search/price_report.json`
+for what was linked, stubbed or left unmatched.
 
-1. Fetch raw expansion and card wikitext into `data/`
-2. Extract card records into `data/cards.json`
-3. Build indexes of Pokémon and artist names referenced by those cards
-4. Fetch the referenced Pokémon and artist pages
-5. Fetch price data for the expansions from TCGplayer into `data/price_data/` and related JSON outputs
-6. Extract enriched entity and expansion records
-7. Clean and normalize processed card data
-8. Merge price data into the processed records
-9. Generate the quality report at `quality_report.md`
+## Other sources explored
 
-## Pipeline stages
+Trainer Hill (archetype win rates only), PokémonMeta (TCG Pocket, not the physical TCG) and the
+Pokémon TCG API (100 requests/day) were evaluated but are not part of the collection.
+Their extractors and captures remain on branch `leo`.
 
-The pipeline can also be run step by step:
+## Group
 
-- `fetching/fetch_cards.py`
-- `extracting/extract_cards.py`
-- `fetching/fetch_entities.py`
-- `fetching/fetch_prices.py`
-- `extracting/extract_entities.py`
-- `extracting/extract_expansions.py`
-- `extracting/extract_prices.py`
-- `processing/process_cards.py`
-- `processing/merge_prices.py`
-- `quality_check.py`
-
-## Outputs
-
-The full pipeline writes structured JSON data under `data/` and a root-level quality report:
-
-- `data/cards.json`
-- `data/pokemon.json`
-- `data/artists.json`
-- `data/expansions.json`
-- `data/price_report.json`
-- `data/_indexes/pokemon.json`
-- `data/_indexes/artists.json`
-- `quality_report.md`
-
-The quality report checks dataset completeness, searchable-text lengths, duplicate identifiers, link coverage, missing entity references, representative sample coverage, and any pricing anomalies or missing price records.
-
-To generate the report on its own:
-
-```powershell
-uv run quality_check.py
-```
-
-## Project structure
-
-- `fetching/` — downloads raw wikitext and related data
-- `extracting/` — converts raw pages into structured JSON
-- `processing/` — cleans, normalizes, merges, and analyzes processed records
-- `search/` — search-ready and derived datasets
-- `data/` — pipeline caches and output data
+- Afonso Saraiva — 202304461
+- Inês Francisco — 202304726
+- Leonardo Carvalho — 202307152
+- Miguel Pereira — 202304387

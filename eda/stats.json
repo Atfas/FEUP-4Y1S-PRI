@@ -1,0 +1,406 @@
+{
+  "counts": {
+    "cards": 13972,
+    "pokemon": 1027,
+    "artists": 427,
+    "expansions": 221,
+    "prints": 18420,
+    "price_rows": 33835
+  },
+  "card_field_missing_pct": {
+    "id": 0.0,
+    "title": 0.0,
+    "name": 0.0,
+    "kind": 0.0,
+    "subtype": 91.6,
+    "stage": 11.6,
+    "type": 9.5,
+    "hp": 10.2,
+    "weakness": 12.4,
+    "resistance": 74.5,
+    "retreat_cost": 14.4,
+    "evolves_from": 61.9,
+    "pokemon": 10.2,
+    "artists": 0.0,
+    "expansions": 0.0,
+    "prints": 0.0,
+    "card_text": 0.0,
+    "rules_text": 0.0,
+    "release_information": 56.9,
+    "trivia": 7.4,
+    "tags": 5.3,
+    "market_price_min": 6.1,
+    "market_price_max": 6.1,
+    "price_updated": 0.0
+  },
+  "raw_kind_values": 46,
+  "category": {
+    "Pokémon": 12542,
+    "Trainer": 1329,
+    "Other/Energy": 101
+  },
+  "type": {
+    "Water": 1816,
+    "Grass": 1799,
+    "Psychic": 1691,
+    "Colorless": 1646,
+    "Fighting": 1426,
+    "None": 1330,
+    "Fire": 1101,
+    "Lightning": 1064,
+    "Darkness": 909,
+    "Metal": 680,
+    "Dragon": 317,
+    "Fairy": 172,
+    "Rainbow": 21
+  },
+  "prints_per_card": {
+    "1": 11131,
+    "2": 1899,
+    "3": 583,
+    "4": 211,
+    "5": 84,
+    "6": 35,
+    "7": 9,
+    "8": 7,
+    "9": 4,
+    "10": 2,
+    "11": 2,
+    "12": 1,
+    "13": 2,
+    "16": 1,
+    "17": 1
+  },
+  "words_rules_text": {
+    "non_empty": 13972,
+    "mean_non_empty": 27.6,
+    "median_non_empty": 24.0,
+    "max": 308
+  },
+  "words_release_information": {
+    "non_empty": 6021,
+    "mean_non_empty": 79.6,
+    "median_non_empty": 52,
+    "max": 2536
+  },
+  "words_trivia": {
+    "non_empty": 12933,
+    "mean_non_empty": 28.4,
+    "median_non_empty": 24,
+    "max": 286
+  },
+  "doc_words": {
+    "mean": 89.4,
+    "median": 69.0,
+    "max": 2839,
+    "total_tokens": 1249373
+  },
+  "rules_text_name_only_pct": 8.9,
+  "vocabulary_size": 12147,
+  "hapax_legomena": 3785,
+  "top_rules_terms": [
+    [
+      "damage",
+      11345
+    ],
+    [
+      "attack",
+      8025
+    ],
+    [
+      "opponent's",
+      6554
+    ],
+    [
+      "energy",
+      5023
+    ],
+    [
+      "flip",
+      4168
+    ],
+    [
+      "deck",
+      4035
+    ],
+    [
+      "turn",
+      3940
+    ],
+    [
+      "heads",
+      3832
+    ],
+    [
+      "during",
+      3375
+    ],
+    [
+      "coin",
+      3321
+    ],
+    [
+      "active",
+      3267
+    ],
+    [
+      "discard",
+      3239
+    ],
+    [
+      "hand",
+      3220
+    ],
+    [
+      "defending",
+      3080
+    ],
+    [
+      "benched",
+      2959
+    ],
+    [
+      "attached",
+      2891
+    ],
+    [
+      "now",
+      2670
+    ],
+    [
+      "put",
+      2652
+    ],
+    [
+      "resistance",
+      2195
+    ],
+    [
+      "weakness",
+      2129
+    ],
+    [
+      "may",
+      2097
+    ],
+    [
+      "can't",
+      1954
+    ],
+    [
+      "next",
+      1796
+    ],
+    [
+      "shuffle",
+      1765
+    ],
+    [
+      "opponent",
+      1619
+    ]
+  ],
+  "top_rules_bigrams": [
+    [
+      "attack damage",
+      4472
+    ],
+    [
+      "flip coin",
+      3184
+    ],
+    [
+      "coin heads",
+      2537
+    ],
+    [
+      "opponent's active",
+      2094
+    ],
+    [
+      "weakness resistance",
+      2027
+    ],
+    [
+      "energy attached",
+      1945
+    ],
+    [
+      "next turn",
+      1791
+    ],
+    [
+      "during turn",
+      1374
+    ],
+    [
+      "shuffle deck",
+      1358
+    ],
+    [
+      "defending now",
+      1343
+    ],
+    [
+      "search deck",
+      1302
+    ],
+    [
+      "damage counters",
+      1274
+    ],
+    [
+      "during opponent's",
+      1254
+    ],
+    [
+      "opponent's next",
+      1245
+    ],
+    [
+      "apply weakness",
+      1074
+    ],
+    [
+      "once during",
+      1041
+    ],
+    [
+      "active now",
+      1022
+    ],
+    [
+      "resistance benched",
+      1000
+    ],
+    [
+      "damage opponent's",
+      986
+    ],
+    [
+      "flip coins",
+      923
+    ]
+  ],
+  "mechanics_pct": {
+    "discard pile": 5.9,
+    "draw cards": 5.2,
+    "search deck": 8.8,
+    "energy attach/move": 5.2,
+    "heal": 4.0,
+    "special conditions": 18.2,
+    "coin flip": 26.9
+  },
+  "top_artists": [
+    [
+      "5ban Graphics",
+      946
+    ],
+    [
+      "Ken Sugimori",
+      834
+    ],
+    [
+      "Kouki Saitou",
+      601
+    ],
+    [
+      "Mitsuhiro Arita",
+      542
+    ],
+    [
+      "Kagemaru Himeno",
+      502
+    ],
+    [
+      "Masakazu Fukuda",
+      432
+    ],
+    [
+      "Atsuko Nishida",
+      370
+    ],
+    [
+      "Ryo Ueda",
+      361
+    ],
+    [
+      "Midori Harada",
+      328
+    ],
+    [
+      "Shin Nagasawa",
+      273
+    ]
+  ],
+  "artists_with_page": 414,
+  "expansions_with_page": 175,
+  "expansions_with_year": 125,
+  "price_min_usd": {
+    "n": 13120,
+    "median": 0.36,
+    "mean": 9.23,
+    "p95": 34.33,
+    "max": 2999.99
+  },
+  "most_expensive": [
+    [
+      "Charizard (Skyridge 146)",
+      2999.99
+    ],
+    [
+      "Umbreon VMAX (Evolving Skies 95)",
+      2267.62
+    ],
+    [
+      "Charizard (Base Set 4)",
+      2257.87
+    ],
+    [
+      "Gengar (Lost Origin 66)",
+      2199.99
+    ],
+    [
+      "Shining Celebi (Neo Destiny 106)",
+      1801.0
+    ]
+  ],
+  "cards_with_year": 12688,
+  "card_text": {
+    "entries": 26675,
+    "attacks": 20327,
+    "attacks_with_damage": 16109,
+    "attacks_with_cost": 20079,
+    "abilities": 2642,
+    "damage_median": 30,
+    "damage_max": 330,
+    "cost_size": {
+      "0": 248,
+      "1": 7953,
+      "2": 6093,
+      "3": 4886,
+      "4": 1048,
+      "5": 98,
+      "6": 1
+    },
+    "damage_modifier": {
+      "fixed": 12285,
+      "+": 2463,
+      "×": 1311,
+      "−": 50,
+      "?": 2
+    }
+  },
+  "stage": {
+    "Basic": 6961,
+    "Stage 1": 3858,
+    "None": 1615,
+    "Stage 2": 1199,
+    "Fossil": 67,
+    "VMAX": 52,
+    "LV.X": 48,
+    "MegaEX": 38,
+    "VSTAR": 35,
+    "VMAXG": 28
+  }
+}

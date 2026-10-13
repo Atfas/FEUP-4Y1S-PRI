@@ -1,0 +1,431 @@
+\documentclass[sigconf]{acmart}
+
+% Remove the ACM copyright/conference boilerplate for a course report.
+\settopmatter{printacmref=false}
+\setcopyright{none}
+\renewcommand\footnotetextcopyrightpermission[1]{}
+\acmConference[PRI 2026/27]{Information Processing and Retrieval}{FEUP}{Porto, Portugal}
+
+\usepackage{xcolor}
+% Visible reminders for things the team still has to confirm. Delete before submission.
+\newcommand{\todo}[1]{\textcolor{red}{\textbf{[TODO: #1]}}}
+% Include a figure if it exists, otherwise draw a placeholder so the report still compiles.
+\newcommand{\figorbox}[2]{\IfFileExists{#1}{\includegraphics[width=#2]{#1}}{\fbox{\parbox{#2}{\centering\vspace{1.5em}missing: \texttt{#1}\vspace{1.5em}}}}}
+
+\begin{document}
+
+% ==================================================
+% TITLE
+% ==================================================
+
+\title{Pok\'emon Cards: Collection, Processing and Characterization}
+
+% ==================================================
+% AUTHORS
+% ==================================================
+
+\author{Afonso Saraiva}
+\affiliation{%
+  \institution{Faculty of Engineering, University of Porto}
+  \city{Porto}
+  \country{Portugal}
+}
+\email{up202304461@up.pt}
+
+\author{Inês Francisco}
+\affiliation{%
+  \institution{Faculty of Engineering, University of Porto}
+  \city{Porto}
+  \country{Portugal}
+}
+\email{up202304726@up.pt}
+
+\author{Leonardo Carvalho}
+\affiliation{%
+  \institution{Faculty of Engineering, University of Porto}
+  \city{Porto}
+  \country{Portugal}
+}
+\email{up202307152@up.pt}
+
+\author{Miguel Pereira}
+\affiliation{%
+  \institution{Faculty of Engineering, University of Porto}
+  \city{Porto}
+  \country{Portugal}
+}
+\email{up202304387@up.pt}
+
+\renewcommand{\shortauthors}{Saraiva et al.}
+
+% ==================================================
+% ABSTRACT
+% ==================================================
+
+\begin{abstract}
+The Pok\'emon Trading Card Game (TCG) has printed tens of thousands of cards
+since 1996, and players and collectors routinely need to find cards by what
+they \emph{do}, who drew them, or where they came from, rather than by exact
+name. This report describes the first milestone of a search system for that
+domain. We collected card, species, illustrator and expansion pages from
+Bulbapedia and joined them with a TCGplayer market-price snapshot obtained
+through TCGCSV. A Python pipeline parses the wiki pages, groups reprints into
+13{,}972 unique cards with 18{,}420 prints, links each card to 1{,}027
+Pok\'emon species, 427 illustrators and 221 expansions, and attaches prices to
+94\% of the cards. The resulting documents average 89 words of free text
+(1.25M tokens in total), and carry 20{,}327 structured attacks with
+Energy cost and damage. We characterize the collection, including field
+completeness, release history, the growth of card HP over time, price
+distributions and the vocabulary of rules text, and define five information
+needs that will drive the retrieval milestones.
+\end{abstract}
+
+\keywords{Pok\'emon TCG, data collection, data preparation, web scraping,
+information retrieval}
+
+\maketitle
+
+% ==================================================
+% 1. INTRODUCTION
+% ==================================================
+
+\section{Introduction}
+
+A Pok\'emon TCG card combines short structured attributes (type, HP,
+weakness, retreat cost) with natural-language rules text describing
+its attacks and abilities. Around each card there is a body of
+encyclopaedic text: how and where it was released, trivia about its
+artwork, the biology of the depicted species and the career of its
+illustrator. Official card databases offer filters on the structured
+fields but do not rank cards by how well their text answers a need such
+as ``cards that recover Energy from the discard pile''.
+
+The goal of this project is a search system that returns a ranked list of
+cards for such needs. This first milestone covers selecting and assessing
+data sources, building a reproducible collection pipeline, defining the
+conceptual model and the document unit, characterizing the collection,
+and formulating the information needs that later milestones will evaluate.
+
+% ==================================================
+% 2. DATA SOURCES
+% ==================================================
+
+\section{Data Sources}
+
+\paragraph{Bulbapedia~\cite{bulbapedia}.}
+A community-maintained Pok\'emon encyclopaedia built on MediaWiki, with
+a dedicated page for almost every TCG card, species, illustrator and
+expansion. Pages contain structured infoboxes (wikitext templates) and
+long prose sections. Bulbapedia is the most complete public reference for
+the TCG and is curated by an editorial team, which we considered sufficient
+authority for card text and release history. Content is licensed under
+CC BY-NC-SA 2.5~\cite{ccbyncsa}, which permits our non-commercial academic
+use with attribution. Pages were retrieved as raw wikitext through the
+MediaWiki API~\cite{mediawikiapi} rather than by scraping rendered HTML,
+with an identifying User-Agent, a 2-second delay between requests and the
+API's \texttt{maxlag} back-off. \todo{crawl date}
+
+\paragraph{TCGCSV~\cite{tcgcsv}.}
+A public, daily mirror of the TCGplayer~\cite{tcgplayer} catalogue and price
+guide, organised as \emph{groups} (product lines/sets) and \emph{products},
+each with market, low, mid and direct-low prices per finish (normal,
+holofoil, reverse holofoil). TCGplayer is the largest card marketplace in
+North America, so its prices are a reasonable market signal. We used the
+snapshot of 2026-10-11 (213 groups, 28{,}054 products). Prices remain
+TCGplayer's data and are used here for non-commercial research only.
+
+\paragraph{Sources evaluated and discarded.}
+We also built extractors for the Pok\'emon TCG API~\cite{pokemontcgapi},
+Trainer Hill~\cite{trainerhill} and Pok\'emonMeta~\cite{pokemonmeta}.
+The TCG API's free tier (100 requests/day) did not allow a complete
+capture. Trainer Hill exposes only archetype-level win-rate matchups
+(778 pairs across 45 archetypes, 2020--2026) without decklists or card
+identifiers, so it cannot be linked to individual cards. Pok\'emonMeta
+covers \emph{TCG Pocket}, a different game with its own card pool.
+Their extractors are kept on a separate branch of the repository but
+are not part of the collection.
+
+\begin{table}[t]
+  \caption{Final collection (Bulbapedia + TCGCSV snapshot).}
+  \label{tab:collection}
+  \small
+  \begin{tabular}{lrl}
+    \toprule
+    Entity & Records & Main text fields (median words) \\
+    \midrule
+    Card & 13{,}972 & rules (24), release info (52), trivia (24) \\
+    Print & 18{,}420 & -- \\
+    Price row & 33{,}835 & -- \\
+    Pok\'emon species & 1{,}027 & biology (267), 10{,}700 Pok\'edex entries \\
+    Artist & 427 & description (50) \\
+    Expansion & 221 & information (194), blurb \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+% ==================================================
+% 3. COLLECTION AND PREPARATION
+% ==================================================
+
+\section{Collection and Preparation}
+
+\subsection{Pipeline}
+
+Figure~\ref{fig:pipeline} shows the pipeline, implemented in Python in
+four stages (\texttt{fetching/}, \texttt{extracting/}, \texttt{processing/}
+and a quality check).
+
+\paragraph{Fetching.}
+Starting from Bulbapedia's list of TCG expansions, the crawler reads each
+expansion page, keeps the links that follow the card-page naming pattern
+(\textit{Name (Expansion Number)}) and downloads their wikitext in batches
+of up to 50 titles per request, resolving redirects. Species and illustrator
+pages are fetched in a second pass, using the names referenced by the
+extracted cards. For prices, the TCGCSV group list and one
+\texttt{ProductsAndPrices.csv} per group are downloaded. All raw responses
+are cached on disk, so interrupted runs resume without re-downloading.
+
+\paragraph{Extracting.}
+Wikitext is parsed with \texttt{mwparserfromhell}. For each card we keep
+the infobox fields (name, species, stage, evolution, type, HP, weakness,
+resistance, retreat cost, trainer class), the structured card text (each
+attack or ability with its Energy cost, damage and effect), Pok\'edex
+entries, the image gallery, the \emph{Release information} and
+\emph{Trivia} sections, and the page categories. Japanese-only fields and
+prints are dropped.
+
+\paragraph{Processing.}
+\texttt{process\_cards.py} assigns stable slug identifiers
+(e.g.\ \texttt{card:abra-151-63}), joins each print to its expansion,
+illustrator and image, and links cards to species, illustrators and
+expansions by normalized name (case, accents and spacing ignored). Names
+without a page become stub records (13 artists, 1 species, several trainer
+kits) so that no link is dangling. Prints missing an expansion, illustrator
+or image are dropped, as are cards without an English print. The card text
+is also flattened into a single \texttt{rules\_text} field for full-text
+search, and the remaining categories become tags.
+\texttt{merge\_prices.py} matches each TCGplayer product to a print by
+cleaned card name and number; a TCGCSV group is mapped to the expansion
+most of its products match (at least 3 votes; 181 of 213 groups), which
+breaks ties and enables a number-only fallback. 21{,}696 products matched,
+6{,}290 did not (mostly jumbo cards, world-championship decks and promos)
+and 68 were ambiguous and left out rather than guessed. Each step writes a
+report (\texttt{links\_report.json}, \texttt{price\_report.json}) listing
+collisions, stubs and unmatched records, which we used for quality
+assessment.
+
+\todo{describe the final cleaning step and the single merged document file:
+normalize the 46 raw \texttt{kind} values (e.g.\ \texttt{svex},
+\texttt{mega ex}, \texttt{megaex}) into card category + mechanic, strip
+whitespace in artist names, drop invalid stub artists such as
+``(This card cannot be used at official tournaments.)''}
+
+\paragraph{Reproducibility.}
+The whole pipeline runs with \texttt{make pipeline} (\texttt{uv run main.py})\nand the characterization with \texttt{make eda}; dependencies are
+pinned in \texttt{pyproject.toml}/\texttt{uv.lock}, and
+\texttt{eda/characterize.py} regenerates every statistic and figure in
+Section~\ref{sec:char}. \todo{fix main.py imports (extract\_prices.py
+missing, build\_quality\_report undefined) before submission}
+
+\begin{figure*}[t]
+  \centering
+  \figorbox{figures/pipeline.pdf}{\textwidth}
+  \caption{Data collection and preparation pipeline.}
+  \label{fig:pipeline}
+\end{figure*}
+
+\subsection{Conceptual Data Model}
+
+Figure~\ref{fig:uml} shows the conceptual model. \emph{Card} is the central
+entity and the retrieval document. A card has one or more \emph{Prints};
+each print belongs to one \emph{Expansion}, is illustrated by one
+\emph{Artist} and may have several \emph{PriceSnapshots} (one per product
+finish). A card has zero or more \emph{CardText} entries: attacks (with
+Energy cost, damage and effect), abilities and trainer effects. A card
+depicts zero or more \emph{Pok\'emon species} (zero for
+Trainer and Energy cards, several for tag-team cards), and each species
+has \emph{Pok\'edex entries} attached to the games in which they appear.
+
+\begin{figure}[t]
+  \centering
+  \figorbox{figures/uml.pdf}{\columnwidth}
+  \caption{Conceptual data model.}
+  \label{fig:uml}
+\end{figure}
+
+\subsection{Document Definition}
+
+Each document in the final collection is one card, identified by its slug
+(e.g.\ \texttt{card:abra-151-63}), with a title (name plus first print),
+structured fields for filtering and its own text fields (rules text, release
+information, trivia), enriched with denormalized text from the linked
+entities: species biology and Pok\'edex entries, illustrator description and
+expansion information. This lets a query about an illustrator or a species'
+habitat match the card even when the card text does not mention it.
+
+% ==================================================
+% 4. DATA CHARACTERIZATION
+% ==================================================
+
+\section{Data Characterization}
+\label{sec:char}
+
+\paragraph{Composition.}
+Of the 13{,}972 cards, 12{,}542 (89.8\%) are Pok\'emon cards, 1{,}329 are
+Trainer cards (Item, Supporter, Stadium, Tool) and 101 are other cards,
+mostly Special Energy (87); basic Energy cards are not in the collection. Types are balanced
+(Water 1{,}816, Grass 1{,}799, Psychic 1{,}691, Colorless 1{,}646) with Dragon
+(317) and Fairy (172) smaller, as these types were introduced later. 80\%
+of cards have a single print; the most reprinted card has 17.
+
+\paragraph{Completeness and quality.}
+Identifiers, names, rules text, artists and expansions are complete.
+Pok\'emon-only attributes are missing for non-Pok\'emon cards as expected
+(HP 10.2\%, type 9.5\% missing); resistance is absent on 74.5\% of cards
+because many Pok\'emon have none. Among text fields, trivia is present on
+92.6\% of cards but release information only on 43.1\%. 94\% of
+cards (13{,}120) have a market price; the median minimum price is US\$0.36,
+the 95th percentile US\$34 and the maximum US\$3{,}000 (Charizard,
+Skyridge~146).
+
+\paragraph{Attacks and abilities.}
+The 13{,}972 cards carry 26{,}675 card-text entries: 20{,}327 attacks
+and 2{,}642 abilities (including the older Pok\'e-Power and Pok\'e-Body).
+98.8\% of attacks have an Energy cost, most often of one to three Energy
+(7{,}953, 6{,}093 and 4{,}886 attacks), and 79\% have a printed damage value
+(median 30, maximum 330). In 3{,}826 of these the damage is variable,
+written as ``120+'', ``20$\times$'' or ``50$-$'' and explained in the effect
+text.
+
+\paragraph{Variables over time.}
+Release years were parsed from expansion pages (125 of 221 expansions;
+12{,}688 cards dated). Figure~\ref{fig:years} shows the number of cards per
+year, which grows sharply after 2016. Figure~\ref{fig:hp} shows HP over time:
+the median HP of Pok\'emon cards rose from 60--70 in 1999--2002 to 110 in
+2026, and the maximum from 120 to 380, which reflects the ``power creep''
+widely discussed by players. Attack damage shows the same trend
+(Figure~\ref{fig:dmg}): the 90th percentile rose from 40 in 2000 to 160 in
+2026.
+\todo{expansions after 2024 are under-dated by the year parser, so the
+2025 bar is incomplete; fix before the final version}
+
+\begin{figure}[t]
+  \centering
+  \figorbox{figures/cards_per_year.pdf}{\columnwidth}
+  \caption{Cards per release year (year of earliest print).}
+  \label{fig:years}
+\end{figure}
+
+\begin{figure}[t]
+  \centering
+  \figorbox{figures/hp_over_time.pdf}{\columnwidth}
+  \caption{Median and maximum HP of Pok\'emon cards per release year.}
+  \label{fig:hp}
+\end{figure}
+
+\paragraph{Text analysis.}
+A card document has a median of 69 words (mean 89, max 2{,}839), giving
+1.25M tokens and a vocabulary of 12{,}147 terms, 3{,}785 of which occur once.
+The most frequent rules-text terms after stop-word removal are
+\emph{damage}, \emph{attack}, \emph{opponent's}, \emph{energy} and
+\emph{flip} (Figure~\ref{fig:terms}); the top bigrams (\emph{flip coin},
+\emph{energy attached}, \emph{search deck}, \emph{damage counters}) are
+game mechanics. Keyword patterns show how often key mechanics appear:
+coin flips 26.9\%, Special Conditions 18.2\%, deck search 8.8\%, discard
+pile 5.9\%, drawing 5.2\%, Energy attachment/movement 5.2\%. Each mechanic
+targeted by our information needs is therefore found on several hundred
+cards, enough for a non-trivial ranking problem. The illustrator
+distribution is long-tailed: 5ban Graphics (946 cards), Ken Sugimori (834),
+Kouki Saitou (601) and Mitsuhiro Arita (542) lead among 427 artists.
+\todo{optional: NER over trivia/release info (e.g.\ spaCy) for events and
+products}
+
+\begin{figure}[t]
+  \centering
+  \figorbox{figures/damage_over_time.pdf}{\columnwidth}
+  \caption{Median and 90th-percentile attack damage per release year.}
+  \label{fig:dmg}
+\end{figure}
+
+\begin{figure}[t]
+  \centering
+  \figorbox{figures/top_terms.pdf}{\columnwidth}
+  \caption{Most frequent terms in card rules text.}
+  \label{fig:terms}
+\end{figure}
+
+% ==================================================
+% 5. PROSPECTIVE SEARCH TASKS
+% ==================================================
+
+\section{Prospective Search Tasks}
+
+\subsection{Description}
+
+The search system retrieves and ranks card documents that satisfy a user's
+information need, rather than relying only on exact keyword matches. A
+relevant document provides information that addresses the user's
+underlying need; a document that contains query terms in an unrelated
+context is not relevant. For example, a card is relevant to a
+discard-based strategy when its attacks or abilities interact with the
+discard pile, not when the phrase appears incidentally. Relevance will be
+judged on the card's rules text together with the enriched text from linked
+entities.
+
+\subsection{Information Needs}
+
+\paragraph{IN1: Cards with discard-pile interactions.}
+A player exploring discard-based strategies wants cards whose attacks or
+abilities use or recover cards from the discard pile. Query:
+\textit{``attacks discard pile''}. Relevant cards have effects that depend
+on or retrieve discarded cards, not ones that merely discard as a cost.
+
+\paragraph{IN2: Powerful attacks with specific Energy requirements.}
+A player wants Pok\'emon with high-damage attacks that use a particular
+Energy type. Query: \textit{``high damage fire energy attack''}. Relevance
+combines the structured attack cost and damage with the effect text (a
+``30+'' attack can be stronger than a fixed 60), so it cannot be answered
+by a single filter.
+
+\paragraph{IN3: Cards depicting Pok\'emon from a given habitat.}
+A collector building a themed binder wants cards showing Pok\'emon that
+live in the sea. Query: \textit{``Pok\'emon that live in the ocean''}.
+Relevance comes from the linked species biology and Pok\'edex entries
+rather than the card text, which tests the value of entity linking.
+
+\paragraph{IN4: Cards that draw or search for cards.}
+A player wants cards whose effects draw cards or search the deck. Query:
+\textit{``ability draw cards search deck''}. Many cards are relevant, some
+much more than others (e.g.\ repeatable abilities versus a one-off attack).
+
+\paragraph{IN5: Cards by illustrator.}
+A collector wants cards illustrated by a particular artist. Query:
+\textit{``cards illustrated by Mitsuhiro Arita''}. Illustrator metadata lets
+the system match cards whose own text never names the artist.
+
+% ==================================================
+% 6. CONCLUSIONS
+% ==================================================
+
+\section{Conclusions}
+
+We built a collection of 13{,}972 Pok\'emon TCG cards from Bulbapedia,
+linked to species, illustrators and expansions and enriched with TCGplayer
+prices, and characterized its completeness, evolution over time and
+vocabulary. Its main strengths are the breadth of its coverage (1999--2026)
+and the amount of text linked to each card. Its main limitations are that basic Energy cards
+are missing, 22\% of TCGCSV products could not be matched, and part of the
+expansions lack a parsed release year. Next steps are the cleaning step
+described in Section~3, building the denormalized documents and indexing
+them in Solr for Milestone~2. Competitive data (decklists from tournament
+APIs such as Limitless~\cite{limitless}) is a candidate extension in
+Milestone~3.
+
+% ==================================================
+% REFERENCES
+% ==================================================
+
+\bibliographystyle{ACM-Reference-Format}
+\bibliography{references}
+
+\end{document}
