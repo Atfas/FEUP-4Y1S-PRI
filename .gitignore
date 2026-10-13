@@ -1,6 +1,4 @@
-pyproject.toml
-.python-version
 data/
 .venv/
-uv.lock
 __pycache__
+databank.json
