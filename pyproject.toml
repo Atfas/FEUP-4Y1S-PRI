@@ -1,0 +1,13 @@
+[project]
+name = "pri"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "beautifulsoup4>=4.13.4",
+    "matplotlib>=3.11.2",
+    "mwparserfromhell>=0.7.2",
+    "pandas>=2.3.0",
+    "requests>=2.34.2",
+]
