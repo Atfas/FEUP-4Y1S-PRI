@@ -1,10 +1,11 @@
 """Turn saved expansion pages into data/expansions.json."""
 import json
+import re
 from pathlib import Path
 
 import mwparserfromhell
 
-from extracting.wikitextUtils import card_files, render, sections, template_name, title_of
+from extracting.wikitextUtils import render, sections, template_name, title_of
 
 
 ONLY_EXPANSIONS_WITH_CARDS = True
@@ -31,47 +32,82 @@ def _expansion_fields(wikitext, path):
     infobox = next(
         (
             template for template in code.filter_templates(recursive=False)
-            if template_name(template) == "tcgexpansioninfobox"
+            if template_name(template) in {"tcgexpansioninfobox", "tcgpromoinfobox"}
         ),
         None,
     )
     if infobox is None:
-        return None
+        return []
 
-    name = render(infobox.get("setname").value) if infobox.has("setname") else ""
+    if infobox.has("setname"):
+        raw_names = re.sub(r"<br\s*/?>", "|", str(infobox.get("setname").value), flags=re.I)
+        names = [render(name) for name in raw_names.split("|")]
+        names = [name for name in names if name]
+    else:
+        names = [title_of(path).removesuffix(" (TCG)")]
+
     size_param = next(
-        (param for param in ("encards", "jacards") if infobox.has(param)),
+        (param for param in ("encards", "jacards", "cards") if infobox.has(param)),
         None,
     )
-    size = render(infobox.get(size_param).value) if size_param else ""
-    if not name:
-        name = title_of(path).removesuffix(" (TCG)")
+    if size_param:
+        raw_sizes = re.sub(r"<br\s*/?>", "|", str(infobox.get(size_param).value), flags=re.I)
+        sizes = [render(size) for size in raw_sizes.split("|")]
+        if len(sizes) != len(names):
+            sizes = [render(infobox.get(size_param).value)] * len(names)
+    else:
+        sizes = [""] * len(names)
 
-    return {
-        "size": size,
-        "name": name,
-        "blurb": _section_text(wikitext, "blurb"),
-        "information": _section_text(wikitext, "information"),
-    }
+    return [
+        {
+            "size": size,
+            "name": name,
+            "blurb": _section_text(wikitext, "blurb"),
+            "information": _section_text(wikitext, "information"),
+        }
+        for name, size in zip(names, sizes)
+    ]
+
+
+def _normalized(value):
+    return " ".join(value.split()).casefold()
 
 
 def build_json(data_dir="data"):
     """Build the expansion JSON from TCG pages in each data subdirectory."""
     data_dir = Path(data_dir)
     expansions = []
-    directories_with_cards = (
-        {path.parent for path in card_files(data_dir)}
-        if ONLY_EXPANSIONS_WITH_CARDS
-        else None
-    )
+    card_print_names = set()
+    if ONLY_EXPANSIONS_WITH_CARDS:
+        cards_path = data_dir / "cards.json"
+        with cards_path.open(encoding="utf-8") as file:
+            cards = json.load(file)
+        card_print_names = {
+            _normalized(print_info["expansion"])
+            for card in cards
+            for print_info in card.get("prints", [])
+            if print_info.get("expansion")
+        }
 
+    all_names = set()  # every expansion name, including ones with no English cards
     for path in sorted(data_dir.glob("*/*_(TCG).wikitext")):
-        if directories_with_cards is not None and path.parent not in directories_with_cards:
-            continue
         wikitext = path.read_text(encoding="utf-8")
-        expansion = _expansion_fields(wikitext, path)
-        if expansion is not None:
+        for expansion in _expansion_fields(wikitext, path):
+            all_names.add(expansion["name"])
+            if ONLY_EXPANSIONS_WITH_CARDS and _normalized(expansion["name"]) not in card_print_names:
+                continue
             expansions.append(expansion)
+
+    unique_expansions = {}
+    for expansion in expansions:
+        key = _normalized(expansion["name"])
+        existing = unique_expansions.get(key)
+        if existing is None or (
+            len(expansion["blurb"]) + len(expansion["information"])
+            > len(existing["blurb"]) + len(existing["information"])
+        ):
+            unique_expansions[key] = expansion
+    expansions = list(unique_expansions.values())
 
     out_path = data_dir / "expansions.json"
     out_path.write_text(
@@ -79,6 +115,15 @@ def build_json(data_dir="data"):
         encoding="utf-8",
     )
     print(f"{len(expansions)} expansions -> {out_path}")
+
+    # The full list of names lets build_search_data.py tell "<set> cards" categories apart from
+    # real tags like "Holographic cards", even for sets that are filtered out above.
+    names_path = data_dir / "expansion_names.json"
+    names_path.write_text(
+        json.dumps(sorted(all_names, key=str.casefold), indent=2, ensure_ascii=False),
+        encoding="utf-8",
+    )
+    print(f"{len(all_names)} expansion names -> {names_path}")
     return expansions
 
 

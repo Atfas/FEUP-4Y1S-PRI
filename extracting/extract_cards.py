@@ -10,11 +10,13 @@ Each card looks like:
       "set": "151",
       "infobox":  {"cardname": "Abra", "hp": "50", ...},
       "artists":  ["Mitsuhiro Arita", "Kouki Saitou"],
-      "prints":   [{"expansion": "151", "rarity": "Common", "card_number": "063/165"}, ...],
-                  (English products without an expansion, like trainer kits, use "deck_kit"/"half_deck")
+      "prints":   [{"expansion": "151", "rarity": "Common", "card_number": "063/165",
+                    "image": "Abra63PokémonCard151.jpg", "illustrator": "Mitsuhiro Arita", "link": "set"}, ...],
+                  (English products without an expansion, like trainer kits, use "deck_kit"/"half_deck";
+                   "link" says how the picture was tied to the print: set, caption, number, order, only;
+                   a picture that matches no print is kept as an entry with "link": null)
       "card_text": [{"kind": "attack", "cost": ["Psychic"], "name": "Psyshot", "damage": "20", ...}],
       "pokedex":  [{"species": "Psi", "ndex": "0063", "dex": "Abra can teleport ...", ...}],
-      "gallery":  [{"image": "Abra63PokémonCard151.jpg", "set": "151", "illustrator": "..."}],
       "release_information": [{"heading": null, "text": "..."}],
       "trivia":   [{"heading": null, "text": "..."}, {"heading": "Origin", "text": "..."}],
       "categories": ["151 cards", "Holographic cards", ...]
@@ -25,13 +27,15 @@ Japanese-only data (fields starting with "j", Japanese expansions) is left out.
 import json
 import re
 import time
+import unicodedata
+from collections import Counter
 from pathlib import Path
 from urllib.parse import unquote
 
 import mwparserfromhell
 
-from extracting.wikitextUtils import (UNKNOWN_TEMPLATES, card_files, categories, render, sections,
-                                      template_name, title_of)
+from extracting.wikitextUtils import (UNKNOWN_TEMPLATES, card_files, categories, read_blocks,
+                                      render, template_name, title_of)
 
 # Infobox fields to keep. Set to None to keep every English field.
 INFOBOX_FIELDS = [
@@ -154,64 +158,177 @@ def read_pokedex(templates):
     return [read_params(t) for t in templates if template_name(t) == "carddex"]
 
 
+def norm_name(text):
+    """Lower case, no accents, single spaces: 'Pokémon  Card 151' and 'pokemon card 151' compare equal."""
+    text = unicodedata.normalize("NFKD", text or "").encode("ascii", "ignore").decode()
+    return re.sub(r"\W+", " ", text.casefold()).strip()
+
+
+def read_caption(caption):
+    """Split a picture caption into (label, illustrator).
+
+    '{{TCG|Special illustration rare}} print<br>Illus. [[Shinya Komatsu]]'
+        -> ("Special illustration rare", "Shinya Komatsu")
+    'Regular print<br>Illus. [[Mitsuhiro Arita]]' -> ("Regular", "Mitsuhiro Arita")
+
+    The label says which print the picture shows: a set ('{{TCG|Paldean Fates}} print'), a kind of
+    print ('Special illustration rare'), or just 'Regular'.
+    """
+    text = str(caption)
+    parts = re.split(r"<br\s*/?>", text, maxsplit=1, flags=re.I)
+    head, tail = parts[0], (parts[1] if len(parts) > 1 else "")
+    if not tail:  # no line break: split at "Illus." instead
+        pieces = re.split(r"illus\.", text, maxsplit=1, flags=re.I)
+        if len(pieces) == 2:
+            head, tail = pieces
+
+    label = re.sub(r"\s*print\s*$", "", render(head), flags=re.I).strip() or None
+
+    after = re.split(r"illus\.", tail, maxsplit=1, flags=re.I)[-1]
+    link = re.search(r"\[\[([^\]|]+)", after)  # [[Page]] or [[Page|text]]: the page is the artist's name
+    illustrator = link.group(1).strip() if link else (render(after) or None)
+    return label, illustrator
+
+
 def read_gallery(templates):
-    """Artwork list from the TCGGallery template (|image1=, |set1=, |illus1=, |image2=, ...)."""
+    """Pictures from the TCGGallery template: image, and the set and illustrator when they are given.
+
+    Two layouts exist:  |image1=..|set1=151|illus1=Name   and   |image1=..|caption1=Regular print<br>Illus. [[Name]]
+    """
     by_number = {}
     for template in templates:
         if template_name(template) != "tcggallery":
             continue
         for param in template.params:
-            match = re.match(r"^(image|set|illus)(\d+)$", str(param.name).strip().lower())
+            match = re.match(r"^(image|set|illus|caption)(\d+)$", str(param.name).strip().lower())
             if match:
-                field, number = match.group(1), int(match.group(2))
-                by_number.setdefault(number, {})[field] = render(param.value)
+                by_number.setdefault(int(match.group(2)), {})[match.group(1)] = param.value
 
-    gallery = []
+    pictures = []
     for number in sorted(by_number):
         entry = by_number[number]
-        gallery.append({
-            "image": entry.get("image"),
-            "set": entry.get("set"),
-            "illustrator": entry.get("illus"),
+        image = render(entry["image"]) if "image" in entry else ""
+        if not image:
+            continue
+        label, caption_illustrator = read_caption(entry["caption"]) if "caption" in entry else (None, None)
+        pictures.append({
+            "image": image,
+            "set": render(entry["set"]) or None if "set" in entry else None,
+            "label": label,
+            "illustrator": (render(entry["illus"]) if "illus" in entry else None) or caption_illustrator,
         })
-    return gallery
+    return pictures
 
 
-def read_artists(category_names, gallery):
-    """Artist names. The 'Illus. by X' categories are the main source; the gallery fills any gaps."""
+def read_infobox_pictures(infobox):
+    """Pictures from the infobox (|image=, |caption=, |reprint1=, |recaption1=, ...).
+
+    Used only for pages that have no gallery, so a card with a single print still gets its image.
+    """
+    if infobox is None:
+        return []
+    params = {str(p.name).strip().lower(): p.value for p in infobox.params}
+    slots = [("image", "caption")] if "image" in params else []
+    numbers = sorted(int(m.group(1)) for key in params if (m := re.fullmatch(r"reprint(\d+)", key)))
+    slots += [(f"reprint{n}", f"recaption{n}") for n in numbers]
+
+    pictures = []
+    for image_key, caption_key in slots:
+        image = render(params[image_key])
+        if not image:
+            continue
+        label, illustrator = read_caption(params[caption_key]) if caption_key in params else (None, None)
+        pictures.append({"image": image, "set": None, "label": label, "illustrator": illustrator})
+    return pictures
+
+
+# ---------- linking pictures to prints ----------
+def print_set(print_):
+    return print_.get("expansion") or print_.get("deck_kit") or ""
+
+
+def print_number(print_):
+    """The first number in the card number: '063/165' -> 63, 'SWSH039' -> 39."""
+    match = re.search(r"\d+", print_.get("card_number") or "")
+    return int(match.group()) if match else None
+
+
+def find_print(picture, prints, free, may_pair_by_order):
+    """Which of the free prints does this picture show? -> (index, how) or (None, None).
+
+    Evidence, strongest first:
+      set      the gallery names the set (|set1=151)
+      caption  the caption names a set, or a kind of print that is a print's rarity
+      number   a number in the image file name is the print's card number (Alakazamex201...jpg -> 201)
+      order    pictures and prints are equally many and nothing else decided: take the next one
+    """
+    candidates = list(free)
+    evidence = []
+
+    if picture["set"]:
+        narrowed = [i for i in candidates if norm_name(print_set(prints[i])) == norm_name(picture["set"])]
+        if not narrowed:
+            return None, None  # the gallery names a set none of the free prints belongs to
+        candidates, evidence = narrowed, evidence + ["set"]
+
+    label = norm_name(picture["label"])
+    if label and label != "regular" and len(candidates) > 1:
+        by_set = [i for i in candidates if norm_name(print_set(prints[i])) == label]
+        by_rarity = [i for i in candidates if norm_name(prints[i].get("rarity")) == label]
+        narrowed = by_set or by_rarity
+        if narrowed:
+            candidates, evidence = narrowed, evidence + ["caption"]
+
+    if len(candidates) > 1:
+        numbers = {int(n) for n in re.findall(r"\d+", picture["image"])}
+        narrowed = [i for i in candidates if print_number(prints[i]) in numbers]
+        if narrowed:
+            candidates, evidence = narrowed, evidence + ["number"]
+
+    if len(candidates) == 1:
+        return candidates[0], "+".join(evidence) or "only"
+    if candidates and may_pair_by_order:
+        return candidates[0], "order"
+    return None, None
+
+
+def link_pictures(prints, pictures):
+    """One list of prints, each with its image and illustrator when a picture could be linked.
+
+    A picture that matches no print is kept as an entry of its own (with "link": None), so nothing
+    is lost. Each print gets "link" saying what evidence tied it to its picture.
+    """
+    linked = [dict(p) for p in prints]
+    taken = set()
+    unlinked = []
+    may_pair_by_order = len(pictures) == len(prints)
+
+    for picture in pictures:
+        free = [i for i in range(len(linked)) if i not in taken]
+        index, how = find_print(picture, linked, free, may_pair_by_order)
+        if index is None:
+            entry = {"image": picture["image"], "illustrator": picture["illustrator"], "link": None}
+            if picture["set"]:
+                entry["expansion"] = picture["set"]
+            unlinked.append(entry)
+            continue
+        taken.add(index)
+        linked[index].update(image=picture["image"], illustrator=picture["illustrator"], link=how)
+    return linked + unlinked
+
+
+def read_artists(category_names, prints):
+    """Artist names. The 'Illus. by X' categories are the main source; the prints' illustrators fill any gaps."""
     names = []
     for category in category_names:
         match = re.match(r"^Illus\. by (.+)$", category)
         if match:
             names.append(match.group(1))
-    for entry in gallery:
-        illustrator = entry["illustrator"]
+    for print_ in prints:
+        illustrator = print_.get("illustrator")
         if illustrator and illustrator not in names:
             names.append(illustrator)
     return names
-
-
-def read_blocks(wikitext, section_name):
-    """Text of a top-level section as a list of {"heading", "text"} blocks.
-
-    The section's own text has heading None; each subsection (===Origin===) is its own block.
-    The Gallery subsection is skipped, because the gallery is read separately.
-    """
-    blocks = []
-    inside = False
-    for level, heading, body in sections(wikitext):
-        if level == 0:
-            continue
-        if level == 2:
-            inside = heading.lower() == section_name
-        if not inside:
-            continue
-        if level > 2 and heading.lower() == "gallery":
-            continue
-        text = render(body)
-        if text:
-            blocks.append({"heading": heading if level > 2 else None, "text": text})
-    return blocks
 
 
 # ---------- putting a card together ----------
@@ -223,17 +340,18 @@ def process_card(path):
     infobox = find_infobox(templates)
 
     category_names = categories(wikitext)
-    gallery = read_gallery(templates)
+    # Prints (rarity, card number) and pictures (image, illustrator) come from different places on
+    # the page; link_pictures joins them into one list.
+    pictures = read_gallery(templates) or read_infobox_pictures(infobox)
+    prints = link_pictures(read_prints(all_templates), pictures)
 
     card = {
         "title": title_of(path),
         "set": set_of(path),
         "infobox": read_infobox(infobox),
-        "artists": read_artists(category_names, gallery),
-        "prints": read_prints(all_templates),
+        "artists": read_artists(category_names, prints),
+        "prints": prints,
         "card_text": read_card_text(templates),
-        "pokedex": read_pokedex(templates),
-        "gallery": gallery,
         "release_information": read_blocks(wikitext, "release information"),
         "trivia": read_blocks(wikitext, "trivia"),
         "categories": category_names,
@@ -248,6 +366,7 @@ def build_json(data_dir="data"):
     seen = set()
     no_infobox = []
     no_artist = []
+    links = Counter()  # how each print's picture was linked
 
     paths = list(card_files(data_dir))
     total = len(paths)
@@ -271,6 +390,8 @@ def build_json(data_dir="data"):
             no_infobox.append(title)
         if not card["artists"]:
             no_artist.append(title)
+        for print_ in card["prints"]:
+            links[print_.get("link") or ("image not linked to a print" if print_.get("image") else "no image")] += 1
         cards.append(card)
 
     print("writing json...", flush=True)
@@ -279,6 +400,7 @@ def build_json(data_dir="data"):
     print(f"{len(cards)} cards -> {out_path}")
     print(f"{len(no_infobox)} with no infobox: {no_infobox[:5]}")
     print(f"{len(no_artist)} with no artist: {no_artist[:5]}")
+    print("prints by how their image was linked:", dict(links.most_common()))
     print("templates render() did not recognise (most common first):")
     for name, count in UNKNOWN_TEMPLATES.most_common(15):
         print(f"  {name:<30} {count}")

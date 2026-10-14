@@ -5,7 +5,9 @@ from pathlib import Path
 
 import mwparserfromhell
 
-from extracting.wikitextUtils import render, sections, template_name, title_of
+from extracting.wikitextUtils import (disambiguation_target, drop_count_sentences,
+                                      is_disambiguation, render, sections, template_name,
+                                      title_of)
 
 
 def _normalized_heading(heading):
@@ -55,28 +57,49 @@ def _pokedex_entries(wikitext):
             if not re.fullmatch(r"dex/entry\d*", name) or not template.has("entry"):
                 continue
 
-            game_param = next(
-                (param for param in ("v", "game", "version") if template.has(param)),
-                None,
-            )
-            entry = {"entry": render(template.get("entry").value)}
-            if game_param:
-                entry["game"] = render(template.get(game_param).value)
-            if form:
-                entry["form"] = form
-            if entry["entry"]:
+            text = render(template.get("entry").value)
+            if not text:
+                continue
+
+            # Dex/Entry2 and Dex/Entry3 name several games: |v=HeartGold|v2=SoulSilver.
+            # Keep one entry per game, so none of them is lost.
+            games = []
+            for param in template.params:
+                if re.fullmatch(r"(v|game|version)\d*", str(param.name).strip().lower()):
+                    game = render(param.value)
+                    if game:
+                        games.append(game)
+
+            for game in games or [None]:
+                entry = {"entry": text}
+                if game:
+                    entry["game"] = game
+                if form:
+                    entry["form"] = form
                 entries.append(entry)
 
     return entries
 
 
 def _page_lookup(folder, pokemon=False):
+    """Map each page name to its saved file, including names that are redirects to a saved page."""
+    def display_name(title):
+        if pokemon and title.endswith(" (Pokémon)"):
+            return title[:-len(" (Pokémon)")]
+        return title
+
     pages = {}
     for path in sorted(folder.glob("*.wikitext")):
-        name = title_of(path)
-        if pokemon and name.endswith(" (Pokémon)"):
-            name = name[:-len(" (Pokémon)")]
-        pages.setdefault(name, path)
+        pages.setdefault(display_name(title_of(path)), path)
+
+    # The fetch step saves a redirected page under its final title and records
+    # {requested title: final title} in _redirects.json, e.g. "Mr Mime (Pokémon)" -> "Mr. Mime (Pokémon)".
+    redirects_file = folder / "_redirects.json"
+    if redirects_file.exists():
+        redirects = json.loads(redirects_file.read_text(encoding="utf-8"))
+        for requested, final in redirects.items():
+            if display_name(final) in pages:
+                pages.setdefault(display_name(requested), pages[display_name(final)])
     return pages
 
 
@@ -89,13 +112,31 @@ def _process_artists(data_dir):
     pages = _page_lookup(data_dir / "artists")
     artists = []
     missing = []
+    resolved = []     # ambiguous names whose illustrator page was found
+    unresolved = []   # ambiguous names where it was not
     for name in sorted(_indexed_names(data_dir / "_indexes" / "artists.json"), key=str.casefold):
         path = pages.get(name)
         if path is None:
             missing.append(name)
             continue
         wikitext = path.read_text(encoding="utf-8")
+
+        # An ambiguous name (e.g. "Akagi") lands on a disambiguation page. The artist's own page
+        # is the one it links to for the TCG illustrator, e.g. "Akagi (illustrator)".
+        if is_disambiguation(wikitext):
+            target = disambiguation_target(wikitext)
+            target_path = pages.get(target) if target else None
+            if target_path is None:
+                unresolved.append(name)
+                artists.append({"name": name, "description": "", "artwork": ""})
+                continue
+            resolved.append(name)
+            wikitext = target_path.read_text(encoding="utf-8")
+
+        # Drop sentences that only report live card counts; rendered, they would leave gaps.
+        wikitext = drop_count_sentences(wikitext)
         artists.append({
+
             "name": name,
             "description": _lead_text(wikitext),
             "artwork": _section_text(wikitext, "artwork", 2),
@@ -106,6 +147,8 @@ def _process_artists(data_dir):
     print(f"{len(artists)} artists -> {out_path}")
     if missing:
         print(f"{len(missing)} indexed artists have no saved page")
+    if resolved or unresolved:
+        print(f"{len(resolved)} disambiguation pages resolved, {len(unresolved)} unresolved: {unresolved[:5]}")
     return artists
 
 
