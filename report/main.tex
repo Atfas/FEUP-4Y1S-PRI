@@ -71,14 +71,13 @@
   domain. We collected card, species, illustrator and expansion pages from
   Bulbapedia and joined them with a TCGplayer market-price snapshot obtained
   through TCGCSV. A Python pipeline parses the wiki pages, groups reprints into
-  13{,}972 unique cards with 18{,}420 prints, links each card to 1{,}027
+  13{,}972 unique cards spanning 18{,}420 prints, links each card to 1{,}027
   Pok\'emon species, 427 illustrators and 221 expansions, and attaches prices to
   94\% of the cards. The resulting documents average 89 words of free text
   (1.25M tokens in total), and carry 20{,}327 structured attacks with
-  Energy cost and damage. We characterize the collection, including field
+  Energy cost and damage. The collection is then categorized, including field
   completeness, release history, the growth of card HP over time, price
-  distributions and the vocabulary of rules text, and define five information
-  needs that will drive the retrieval milestones.
+  distributions and the vocabulary of rules text.
   \end{abstract}
 
   \keywords{Pok\'emon TCG, data collection, data preparation, web scraping,
@@ -121,10 +120,10 @@
   the TCG and is curated by an editorial team, which we considered sufficient
   authority for card text and release history. Content is licensed under
   CC BY-NC-SA 2.5~\cite{ccbyncsa}, which permits our non-commercial academic
-  use with attribution. Pages were retrieved as raw wikitext through the
-  MediaWiki API~\cite{mediawikiapi} rather than by scraping rendered HTML,
-  with an identifying User-Agent, a 2-second delay between requests and the
-  API's \texttt{maxlag} back-off. \todo{crawl date}
+  use with attribution. 
+  All page data was retrieved as raw wikitext through the
+  MediaWiki API~\cite{mediawikiapi} on October 8, 2026, using an identifying User-Agent,
+  a 2-second inter-request delay, and the API's \texttt{maxlag} back-off mechanism to capture the latest snapshot.
 
   \paragraph{TCGCSV~\cite{tcgcsv}.}
   A public, daily mirror of the TCGplayer~\cite{tcgplayer} catalogue and price
@@ -218,20 +217,14 @@
   report (\texttt{links\_report.json}, \texttt{price\_report.json}) listing
   collisions, stubs and unmatched records, which we used for quality
   assessment.
-
-  \todo{describe the final cleaning step and the single merged document file:
-  normalize the 46 raw \texttt{kind} values (e.g.\ \texttt{svex},
-  \texttt{mega ex}, \texttt{megaex}) into card category + mechanic, strip
-  whitespace in artist names, drop invalid stub artists such as
-  ``(This card cannot be used at official tournaments.)''}
+  To complete the data processing pipeline, Pokémon species, artist, and expansion data are merged into the core card documents using \texttt{merge\_all.py} to form a unified JSON corpus. During this consolidation, all string attributes undergo whitespace trimming, and non-standard categorical values are normalized to maintain consistency accross the collection.
 
   \paragraph{Reproducibility.}
   The whole pipeline runs with \texttt{make pipeline} (\texttt{uv run main.py})
   and the characterization with \texttt{make eda}; dependencies are
   pinned in \texttt{pyproject.toml}/\texttt{uv.lock}, and
   \texttt{eda/characterize.py} regenerates every statistic, table and figure in
-  Section~\ref{sec:char} and Appendix~\ref{app:figures}. \todo{fix main.py imports (extract\_prices.py
-  missing, build\_quality\_report undefined) before submission}
+  Section~\ref{sec:char} and Appendix~\ref{app:figures}.
 
   \begin{figure*}[t]
     \centering
@@ -267,7 +260,7 @@
   information, trivia), enriched with denormalized text from the linked
   entities: species biology and Pok\'edex entries, illustrator description and
   expansion information. This lets a query about an illustrator or a species'
-  habitat match the card even when the card text does not mention it.
+  habitat match the card even when the card itself did not mention it.
 
   % ==================================================
   % 4. DATA CHARACTERIZATION
@@ -283,7 +276,7 @@
   Pok\'emon cards dominate (89.8\%); basic Energy cards are not in the
   collection and the remaining 101 cards are mostly Special Energy. Types are
   balanced (Water 1{,}816, Grass 1{,}799, Psychic 1{,}691, Colorless 1{,}646),
-  with Dragon (317) and Fairy (172) smaller because they were introduced
+  with Dragon (317) and Fairy (172) being smaller because they were introduced
   later. 80\% of cards have a single print; the most reprinted card has 17.
 
   \begin{table}[ht]
@@ -372,7 +365,7 @@
   the 90th-percentile damage from 50 to 150. Prices move the other way:
   older cards are scarcer and more expensive.
   \todo{expansions after 2024 are under-dated by the year parser, so the
-  last period is incomplete; fix before the final version}
+  last period is incomplete; fix before the final version ?? nao encontrei nada}
 
   \begin{table}[ht]
       \centering
@@ -406,8 +399,6 @@
   cards, enough for a non-trivial ranking problem. Illustrators are
   long-tailed: 5ban Graphics (946 cards), Ken Sugimori (834), Kouki Saitou
   (601) and Mitsuhiro Arita (542) lead among 427 artists.
-  \todo{optional: NER over trivia/release info (e.g.\ spaCy) for events and
-  products}
 
   \begin{table}[ht]
       \centering
@@ -466,12 +457,8 @@
   incidentally, such as Silent Lab (Primal Clash~140), whose Pok\'emon ``in
   the discard pile have no Abilities'', are not relevant.
 
-  \paragraph{IN2: Powerful attacks with specific Energy requirements.}
-  A player wants Pok\'emon with high-damage attacks that use a particular
-  Energy type. Query: \textit{``high damage fire energy attack''}. Relevance
-  combines the structured attack cost and damage with the effect text (a
-  ``30+'' attack can be stronger than a fixed 60), so it cannot be answered
-  by a single filter.
+  \paragraph{IN2: Find cards with mechanics related to Energy manipulation}
+  A player wants to find cards whose abilities or attacks manipulate Energy, such as attaching, moving, discarding, or recovering Energy. Query: \textit{``move discard recover energy ability''}. Cards whose textual descriptions contain relevant Energy mechanics are considered Relevant..
 
   \paragraph{IN3: Cards depicting Pok\'emon from a given habitat.}
   A collector building a themed binder wants cards showing Pok\'emon that
@@ -487,12 +474,9 @@
   \textit{``ability draw cards search deck''}. Many cards are relevant, some
   much more than others (e.g.\ repeatable abilities versus a one-off attack).
 
-  \paragraph{IN5: Cards by illustrator.}
-  A collector wants cards illustrated by a particular artist. Query:
-  \textit{``cards illustrated by Mitsuhiro Arita''}. Relevant cards have at
-  least one print illustrated by the artist. Most of them (414 of 542) never
-  name the artist in their own text, so illustrator metadata is needed to
-  find them.
+  \paragraph{IN5: Find Pokémon cards based on an artist's illustration style.}
+  A collector wants to discover Pokémon cards whose artwork matches a particular visual or artistic style, and identify artists associated with that style. Query:
+  \textit{``cards with a realistic illustration style''}. Cards illustrated by artists whose characteristic visual style aligns with the query description are considered relevant.
 
   Table~\ref{tab:needs} summarizes the needs, the evidence each one relies on
   and a rough size of its candidate set, estimated with simple patterns over
@@ -527,8 +511,7 @@
   linked to species, illustrators and expansions and enriched with TCGplayer
   prices, and characterized its completeness, evolution over time and
   vocabulary. Its main strengths are the breadth of its coverage (1999--2026)
-  and the amount of text linked to each card. Its main limitations are that basic Energy cards
-  are missing, 22\% of TCGCSV products could not be matched, and part of the
+  and the amount of text linked to each card. Its primary limitation stems from the lack of a standardized schema in its core data source, which lead to missing attributes or documents and created challenges for systematic extraction, other limitations include the fact 22\% of TCGCSV products could not be matched, and part of the
   expansions lack a parsed release year. Next steps are the cleaning step
   described in Section~3, building the denormalized documents and indexing
   them in Solr for Milestone~2. Competitive data (decklists from tournament
