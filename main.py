@@ -15,6 +15,7 @@ from extracting.extract_prices import build_json as extract_prices
 from quality_check import build_quality_report
 from processing.process_cards import build as process_cards
 from processing.merge_prices import merge as merge_prices
+from processing.merge_all import main as merge_all
 
 def run_pipeline(data_dir="data", max_expansions=None):
     """Fetch and process cards, related entities, and expansions in dependency order."""
@@ -34,11 +35,13 @@ def run_pipeline(data_dir="data", max_expansions=None):
     extract_expansions(data_dir=data_dir)
     extract_prices(data_dir=data_dir)
     
+    build_quality_report(data_dir=data_dir)
     #step 5: remove unwanted information, cards with nulls, repeated cards,
     process_cards()
     merge_prices()
+
+    merge_all()
     
-    build_quality_report(data_dir=data_dir)
 
 
 if __name__ == "__main__":
